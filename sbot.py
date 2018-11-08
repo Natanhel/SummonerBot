@@ -15,42 +15,33 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 adbpath = '..\\platform-tools\\.\\adb'
 serial = ""
 ImageFile.LOAD_TRUNCATED_IMAGES = True
+sellRunes = True
 soldRunes = 0
 keptRunes = 0
+notRuneCnt = 0
+revivedCnt = 0
 totalRefills = 0
+legend = 0
+hero = 0
+rare = 0
 adb = adb()
-
-def adbshell(command):
-    return adb.adbshell(command)
-
-def adbpull(command):
-    return adb.adbpull(command)
-
-def adbdevices():
-    return adb.adbdevices()
-
-def touchscreen_devices():
-        return adb.touchscreen_devices()
 
 def tap(x, y):
     command = "input tap " + str(x) + " " + str(y)
     command = str.encode(command)
-    adbshell(command.decode('utf-8'))
+    adb.adbshell(command.decode('utf-8'))
 
 def screenCapture():
     # perform a search in the sdcard of the device for the SummonerBot
     # folder. if we found it, we delete the file inside and capture a 
     # new file.
-    child = adbshell('ls sdcard')
+    child = adb.adbshell('ls sdcard')
     bFiles = child.stdout.read().split(b'\n')
     bFiles = list(filter(lambda x: x.find(b'SummonerBot\r') > -1, bFiles))
     if  len(bFiles) == 0:
         print("-----------------creating new folder-----------------")
-        adbshell('mkdir -m 777 /sdcard/SummonerBot')
-    # else:
-        # print("-----------------removing screen capture-----------------")
-        # adbshell('rm /sdcard/SummonerBot/capcha.png')
-    adbshell('screencap -p /sdcard/SummonerBot/capcha.jpg')
+        adb.adbshell('mkdir -m 777 /sdcard/SummonerBot')
+    adb.adbshell('screencap -p /sdcard/SummonerBot/capcha.jpg')
     return ""
 
 def clearConsole():
@@ -74,7 +65,6 @@ def sleepCountdown(timeEpoch):
         last_sec = i
     if timeEpoch-float(last_sec+1) > 0:
         time.sleep(timeEpoch-float(last_sec+1))
-    # print("")
     sys.stdout.write('\r')
     sys.stdout.flush()
         # print("")
@@ -100,7 +90,6 @@ def convTIF2PNG(fileName):
     image_file.save(fileName + '.jpg')
 
 def convPNG2TIF(fileName):
-    # print(fileName)
     try: 
         image_file = Image.open(fileName + '.jpg').convert('L')
         image_file.save(fileName + '.tif')
@@ -123,17 +112,8 @@ def checkSixStar(fileName):
 def getScreenCapture():
     screenCapture()
     # Pull image from the phone
-    adbpull("/sdcard/SummonerBot/capcha.jpg")
-    # adbpull("/sdcard/SummonerBot/capcha.png")
-    # # convert to a working jpg file
+    adb.adbpull("/sdcard/SummonerBot/capcha.jpg")
     time.sleep(1)
-    # try:
-    #     im = Image.open("capcha.png")
-    #     rgb_im = im.convert('RGB')
-    #     rgb_im.save('capcha.jpg')
-    # except IOError:        
-    #     print("Could not open file capcha.png")
-    # return file name
     return "capcha"
 
 def crop(x,y,h,w,fileName):
@@ -157,7 +137,7 @@ def crop2Default():
 
     try:
         img = cv2.imread('capcha_c.jpg')
-        if img.all() != None:
+        if img is not None:
             crop_img = img[0, 0]
             cv2.imwrite("capcha_c.jpg", crop_img)    
     except IOError:
@@ -165,7 +145,7 @@ def crop2Default():
 
 def performOCR():
     global totalRefills
-    fileN = getScreenCapture()
+    fileN = crop(0,300,1050,1900,getScreenCapture())
     convPNG2TIF(fileN)
     fullText = tif2text(fileN).split('\n')
     for text in fullText:
@@ -176,11 +156,10 @@ def performOCR():
             return "revive"
         if text.find("correct") != -1:
             return "correct"
-    fileN = crop(800,350,300,450,fileN)
-    convPNG2TIF(fileN)
-    fullText = tif2text(fileN).split('\n')
-    print(fullText)
-    for text in fullText:
+        if text.find("count as a loss") != -1:
+            return "dc"
+        if text.find("connection") != -1:
+            return "dc_before_run"            
         if text.find("Reward") != -1:
             return "reward"
         if text.find("Rewand") != -1:
@@ -189,6 +168,8 @@ def performOCR():
             return "reward"
         if text.find("Rewamd") != -1:
             return "reward"
+            
+    print(fullText)
 
     return "performed OCR reading "
     
@@ -198,8 +179,8 @@ def refillEnergy():
     sleepPrinter(2)
 
     print("Clicked recharge energy")
-    tap(random.randint(690,700),random.randint(300,700))
-    sleepPrinter(2)
+    tap(random.randint(694,696),random.randint(400,500))
+    sleepPrinter(5)
 
     print("Clicked confirm buy")
     tap(random.randint(690,700),random.randint(600,700))
@@ -213,34 +194,40 @@ def refillEnergy():
     tap(random.randint(850,1050),random.randint(880,980))
     sleepPrinter(2)
 
-    # exitRefill()
-
 def exitRefill():
     print("Clicked Close Purchase")
     tap(random.randint(1760,1850),random.randint(75,140))
 
+def readCapchaFile(fileName):
+    try:
+        img = cv2.imread('capcha_c.tif')
+        if img.all() != None:
+            cv2.imwrite(fileName+".tif", img) 
+    except IOError:
+        print("couldn't save with other name")
+    return tif2text(fileName).split('\n')
 
 def keepOrSellRune():
-    i = 2
+    i = 1
     keep = True
     hasSpeedSub = False
     foundRare = False
     global soldRunes
     global keptRunes
     
+    screenCapture()
+    sleepCountdown(2)
+    
     while i > 0:
         i-=1
+        global legend
+        global hero
+        global rare
         performOCR()        
         fileN = crop(1200,350,50,100,"capcha") # Rarity
         convPNG2TIF(fileN)
         
-        try:
-            img = cv2.imread('capcha_c.tif')
-            if img.all() != None:
-                cv2.imwrite("rarity.tif", img) 
-        except IOError:
-            print("couldn't save with other name")
-        fullText = tif2text("rarity").split('\n')
+        fullText = readCapchaFile("rarity")
 
         print("Rarity:" + str(fullText))
         rarity = ""
@@ -248,27 +235,23 @@ def keepOrSellRune():
             if text.find("Rare") != -1:
                 # Sell rune if it's 5* and Rare.
                 foundRare = True
+                rare+=1
                 rarity = "Rare"
             if text.find("Hero") != -1:
+                hero+=1
                 rarity = "Hero"
             if text.find("Legend") != -1:
+                legend+=1
                 rarity = "Legend"
 
         if rarity == "" and i == 0:
             clickOther()
             return
-
         
         fileN = crop(600,350,300,600,"capcha") # Sub stats
         convPNG2TIF(fileN)
-        
-        try:
-            img = cv2.imread('capcha_c.tif')
-            if img.all() != None:
-                cv2.imwrite("substats.tif", img) 
-        except IOError:
-            print("couldn't save with other name")
-        fullText = tif2text("substats").split('\n')
+                
+        fullText = readCapchaFile("substats")
 
         print("Subststs:" + str(fullText))
         for text in fullText:
@@ -281,7 +264,6 @@ def keepOrSellRune():
     print("found speed? " + str(hasSpeedSub))
     print("found rare? " + str(foundRare))
     print("found rarity? " + rarity)
-    # print("Is 5* and has speed? " + str(sixStar))
 
     if sixStar:
         if rarity == "Rare" and not hasSpeedSub:
@@ -292,11 +274,19 @@ def keepOrSellRune():
         if rarity == "Legend":
             keep = True
         else:
-            # keep = False
             if  rarity == "Hero" and hasSpeedSub:
                 keep = True
             else:
                 keep = False
+
+    # Handle the number of runes if a rune was sold
+    if  keep == False:
+        if  rarity == "Legend": 
+            legend-=1
+        if  rarity == "Hero":
+            hero-=1
+        if  rarity == "Rare":
+            rare-=1
         
     print("keep? " + str(keep))
     if keep == False:
@@ -312,6 +302,8 @@ def keepOrSellRune():
         keptRunes += 1
 
 def sayNo2Revives():
+    global revivedCnt
+    revivedCnt = revivedCnt + 1
     print("Clicked no on revive")
     tap(random.randint(1050,1420),random.randint(650,750))
     sleepPrinter(1)
@@ -322,43 +314,60 @@ def sayNo2Revives():
     tap(random.randint(1300,1350),random.randint(440,450))
     sleepPrinter(3)
 
+def print2CMD(tupleWA):
+    for t in tupleWA:
+        print(t)
+
+def print2File(tupleWA):
+    filename = "stats.log"
+    print("logged.")
+    file = open(filename,"w")
+    for t in tupleWA:
+        t = t + "\n"
+        file.write(t)
+    file.close()
+
+def printStats(i):
+    printable = []
+    printable.append("---------------------------------------------------------")
+    printable.append("Stats:")
+    printable.append("Selling runes? " + str(sellRunes))
+    printable.append("Number of runes sold: " + str(soldRunes))
+    printable.append("Number of runes kept: " + str(keptRunes))
+    printable.append("Number of not runes (scrolls, angelmons etc): " + str(notRuneCnt))   
+    printable.append("Number of Legend runes: " + str(legend) )
+    printable.append("Number of Hero runes: "  + str(hero) )
+    printable.append("Number of Rare runes: "  + str(rare) )   
+    printable.append("Number of K.O.: " + str(revivedCnt))        
+    printable.append("Total refills: " + str(totalRefills))
+    printable.append("Total runs: " + str(i-totalRefills))
+    printable.append("Success Rate: " + "%.2f" % round(((i-totalRefills-revivedCnt)/(i-totalRefills))*100,2) )
+    printable.append("---------------------------------------------------------")
+    # print2CMD(printable)
+    print2File(printable)
+
 def clickOther():
-    
-    # fileN = crop(580,250,100,600,"capcha") # Rarity
-    # convPNG2TIF(fileN)
-    # fullText = tif2text(fileN).split('\n')
-    # print(fullText)
-    # clickOthers = False
-    # for text in fullText:
-    #     if ( text.find("Rare") == -1 ):
-    #         clickOthers = True
-    #     if ( text.find("Legend") == -1 ): 
-    #         clickOthers = True
-    #     if ( text.find("Hero") == -1 ):
-    #         # if it doesn't have rarity, it's not a rune.
-    #         clickOthers = True
-    # if clickOthers:    
+    global notRuneCnt
+    notRuneCnt = notRuneCnt + 1
     print("it's not a rune!")
     print("Clicked Get Symbol\\angelmon\\scrolls")
     tap(random.randint(950,960),random.randint(850,870)) 
     sleepPrinter(random.uniform(1,3))
-    # return clickOthers
+
+def clickConnect():
+    print("Reconnecting...")
+    tap(random.randint(670,900),random.randint(670,750)) 
+    sleepPrinter(random.uniform(1,3))
+def clickConnectBeforeRun():
+    print("Reconnecting for run...")
+    tap(random.randint(600,650),random.randint(800,810)) 
+    sleepPrinter(random.uniform(1,3))
 
 def startBot(_SellRunes = False):
-    SellRunes = _SellRunes
     i = 0
     while True:
         i += 1
-        # print()
-        print("-----------------------------------------------------------------------------------------")
-        
-        print("Stats:")
-        print("Selling runes? " + str(SellRunes))
-        print("Number of runes sold: " + str(soldRunes) + " Number of runes kept: " + str(keptRunes))
-        print("Total refills: " + str(totalRefills))
-        print("Total runs: " + str(i))
-        print("-----------------------------------------------------------------------------------------")
-        
+        printStats(i)
         crop2Default() # Reset capcha_c.tif file to avoid reading the same file next iteration
         
         getScreenCapture()
@@ -386,6 +395,12 @@ def startBot(_SellRunes = False):
             if ret.find("correct") != -1:
                 return True
 
+            if ret.find("dc") != -1:
+                clickConnect()
+
+            if ret.find("dc_before_run") != -1:
+                clickConnectBeforeRun
+
             mod += 1        
             mod = mod %1024
             sys.stdout.write(ret + str(mod) + "\n")
@@ -398,24 +413,21 @@ def startBot(_SellRunes = False):
             print("Clicked Randomly")
             tap(random.randint(1300,1350),random.randint(690,700))
             sleepPrinter(3)
-            # Click get other stuff if needed
-            # clickOther()
-            # Click keep rune
-            if SellRunes:
+            if sellRunes:
                 keepOrSellRune()
             else:
                 print("Clicked keep rune")
                 tap(random.randint(1030,1230),random.randint(820,920)) 
             sleepPrinter(random.uniform(2,3))
-            
+        sleepPrinter(random.uniform(2,3))    
         print("Clicked Continue")
         tap(random.randint(800,850),random.randint(600,650))
         sleepPrinter(random.uniform(1.5,2.5))
         
 
 clearConsole()
+startBot()
 
-startBot(True)
-# keepOrSellRune()
+adb.adbshell('input keyevent 26') # Turn off screen
 
 print("Finished")

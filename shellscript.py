@@ -49,7 +49,27 @@ class adbInterface:
         return bSerial.decode()
 
     def touchscreen_devices(self):
-            child = self.adbshell('getevent -il')
-            bTouchdev = child.stdout.read().split(b'add device ')
-            bTouchdev = list(filter(lambda x: x.find(b'ABS_MT_POSITION_X') > -1, bTouchdev))[0]
-            return bTouchdev.decode()
+        child = self.adbshell('getevent -il')
+        bTouchdev = child.stdout.read().split(b'add device ')
+        bTouchdev = list(filter(lambda x: x.find(b'ABS_MT_POSITION_X') > -1, bTouchdev))[0]
+        return bTouchdev.decode()
+
+    # def screenCapture(self):
+    #     # perform a search in the sdcard of the device for the SummonerBot
+    #     # folder. if we found it, we delete the file inside and capture a 
+    #     # new file.
+    #     child = self.adbshell('ls sdcard')
+    #     bFiles = child.stdout.read().split(b'\n')
+    #     bFiles = list(filter(lambda x: x.find(b'SummonerBot\r') > -1, bFiles))
+    #     if  len(bFiles) == 0:
+    #         print("-----------------creating new folder-----------------")
+    #         self.adbshell('mkdir -m 777 /sdcard/SummonerBot')
+    #     self.adbshell('screencap -p /sdcard/SummonerBot/capcha.jpg')
+    #     return ""
+        
+    # def getScreenCapture(self):
+    #     self.screenCapture()
+    #     # Pull image from the phone
+    #     self.adbpull("/sdcard/SummonerBot/capcha.jpg")
+    #     time.sleep(1)
+    #     return "capcha"
