@@ -30,3 +30,13 @@ You will need to connect your phone via USB and enable USB debugging on your pho
 insall python and use in command line:
   cd /path/to/SummonerBot/
   python ./sbot.py
+
+WiFI Support:
+=============
+In order to use the bot over WiFi you'll need to connect the phone to the USB port,
+write in the command line the next (unix) command:
+
+adb tcpip 5555 & ip="`adb shell ip -f inet addr show wlan0 | grep -oP "\d{3}.\d{3}.\d.\d" | grep -m1 ""`" & adb connect ${ip}:5555
+
+This will establish a connection to the phone created by the phone's own IP address
+and link the adb over the correct IP in your router.
