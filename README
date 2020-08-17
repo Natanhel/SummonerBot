@@ -29,7 +29,7 @@ Usage:
 You will need to connect your phone via USB and enable USB debugging on your phone first.
 insall python and use in command line:
   cd /path/to/SummonerBot/
-  python ./sbot.py
+  python ./sbot.py -f
 
 WiFI Support:
 =============
