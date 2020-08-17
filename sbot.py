@@ -5,10 +5,10 @@ import os
 import sys
 import time
 import random
-from PIL import Image
-from PIL import ImageFile
+# from PIL import Image
+# from PIL import ImageFile
 from pytesser import *
-import cv2.cv2 as cv2
+# import cv2.cv2 as cv2
 from adbInterface import adbInterface as adb
 import sys, getopt
 
