@@ -7,13 +7,12 @@ import time
 import random
 from PIL import Image
 from PIL import ImageFile
-from pytesser import *
 import cv2.cv2 as cv2
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 class adbInterface:
-    adbpath = '..\\platform-tools\\.\\adb'
+    adbpath = '.\\platform-tools\\adb'
     serial = ""
 
     def __init__(self):
@@ -21,7 +20,7 @@ class adbInterface:
         # print("---Finding devices serial---")
         self.serial = self.adbdevices()
         print("---Serial found " + self.serial + "---")
-        return 
+        return
     def adbshell(self, command):
         
         # print("ADB Shell Command")
@@ -49,7 +48,6 @@ class adbInterface:
         # the args input is not dependant in user input)
         child = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE)
         # split the bytes string where I can get the serial of the device
-        # print(args)
         bSerial = child.stdout.read().split(b'\n')[1].split(b'\t')[0]
         # decode the bytes into string
         return bSerial.decode()
